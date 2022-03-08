@@ -1,6 +1,6 @@
-# TodoApp API Example
+# Bookstore API Example
 
-This project was generated with Express JS and was an Example API for ToDo Project
+This project was generated with Express JS and was an Example API for Bookstore Project
 
 ## Development server
 
