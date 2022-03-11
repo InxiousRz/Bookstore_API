@@ -15,14 +15,13 @@ const PaginatePagesSimple = require('./paginate').PaginatePagesSimple;
 // ===============================================================================
 
 
-// ADD Book
+// ADD sales
 // ===============================================================================
-function addBook(
-    author_id,
-    title, 
-    summary, 
-    price,
-    stock
+function addSales(
+    name,
+    email, 
+    quantity, 
+    book_id
 ){
 
     let success;
@@ -31,41 +30,103 @@ function addBook(
     try {
 
         let action_time = moment_tz();
+        let unix_now = action_time.unix();
         console.log(action_time);
 
 
         // PARAM TREATMENT
-        title = title.toString().replaceAll("'", "''");
-        summary = summary.toString().replaceAll("'", "''");
+        name = name.toString().replaceAll("'", "''");
+        email = email.toString().replaceAll("'", "''");
+
+
+        // BOOK
+        let book_stmt =  db.prepare(
+            `
+                SELECT 
+                    b.book_id as "Book_ID",
+                    b.author_id as "Author_ID",
+                    b.title as "Title",
+                    b.summary as "Summary",
+                    b.price as "Price",
+                    b.stock as "Stock",
+                    b.cover_url as "Cover_URL"
+                FROM book b
+                WHERE b.book_id = ${book_id}
+                ORDER BY b.book_id asc
+            `
+        );
+        let book_data = book_stmt.get();
+        if(!book_data){
+            success = true;
+            result = null;
+            return [
+                success,
+                result
+            ]; 
+        }
+
+        console.log('book data fetched :: ' + book_data["Book_ID"].toString());
 
 
         // BEGIN
         begin.run();
 
         // QUERY
-        let insert_book_stmt = db.prepare(
+        let total_price = book_data["Price"] * quantity;
+
+        // PARAM TREATMENT
+        let book_title = book_data["Title"].toString().replaceAll("'", "''");
+
+        let insert_sales_stmt = db.prepare(
             `
-                INSERT INTO book(author_id, title, summary, price, stock)
+                INSERT INTO sales(
+                    name, 
+                    email, 
+                    book_title, 
+                    author_id,
+                    quantity,
+                    price_per_unit, 
+                    price_total, 
+                    created_time
+                )
                 VALUES (
-                    ${author_id},
-                    '${title}',
-                    '${summary}',
-                    ${price},
-                    ${stock}
+                    '${name}',
+                    '${email}',
+                    '${book_title}',
+                    ${book_data["Author_ID"]},
+                    ${quantity},
+                    ${book_data["Price"]},
+                    ${total_price},
+                    ${unix_now}
                 )
             `
         );
 
         
-        let insert_book_info = insert_book_stmt.run();
-        let book_id = insert_book_info.lastInsertRowid;
-        console.log('book data created :: ' + book_id.toString());
+        let insert_sales_info = insert_sales_stmt.run();
+        let sales_id = insert_sales_info.lastInsertRowid;
+        console.log('sales data created :: ' + sales_id.toString());
+
+
+        // STOCK
+        let leftover_stock = book_data["Stock"] - quantity;
+        let update_book_stmt = db.prepare(
+            `
+                UPDATE book 
+                SET stock = ${leftover_stock}
+                WHERE book_id = ${book_data["Book_ID"]}
+            `
+        );
+
+        
+        let update_book_info = update_book_stmt.run();
+        console.log('book data updated :: ' + book_data["Book_ID"].toString());
 
         // COMMIT
         commit.run();
         
         success = true;
-        result = book_id;
+        result = null;
 
     } catch(err) {
 
@@ -87,18 +148,22 @@ function addBook(
 
 // GET book SEARCH MAIN
 // ===============================================================================
-function getBookSearchMain(
-    title,
+function getSalesSearchMain(
     author_id,
+    book_title,
+    sales_created_start,
+    sales_created_end,
     current_page,
     limit
 ){
 
     // GET SAMPLE PARAMETER HASIL DATA
     // ------------------------------------------------------
-    let [get_search_success, get_search_result] = getBookSearch(
-        title,
+    let [get_search_success, get_search_result] = getSalesSearch(
         author_id,
+        book_title,
+        sales_created_start,
+        sales_created_end,
         current_page,
         limit
     )
@@ -112,9 +177,11 @@ function getBookSearchMain(
 
     // GET SAMPLE PARAMETER HASIL DATA
     // ------------------------------------------------------
-    let [get_search_count_success, get_search_count_result] = getBookSearchCountAll(
-        title,
-        author_id
+    let [get_search_count_success, get_search_count_result] = getSalesSearchCountAll(
+        author_id,
+        book_title,
+        sales_created_start,
+        sales_created_end
     )
 
     // IF FAILS
@@ -142,9 +209,11 @@ function getBookSearchMain(
 
 // GET book search
 // ===============================================================================
-function getBookSearch(
-    title,
+function getSalesSearch(
     author_id,
+    book_title,
+    sales_created_start,
+    sales_created_end,
     current_page,
     limit
 ){
@@ -157,30 +226,18 @@ function getBookSearch(
         // BOOK
         let query = `
             SELECT 
-                book_id as "Book_ID",
+                sales_id as "Sales_ID",
+                name as "Recipient_Name",
+                email as "Recipient_Email",
+                book_title as "Book_Title",
                 author_id as "Author_ID",
-                title as "Title",
-                summary as "Summary",
-                price as "Price",
-                stock as "Stock",
-                cover_url as "Cover_URL"
-            FROM book
+                quantity as "Quantity",
+                price_per_unit as "Price_Per_Unit",
+                price_total as "Total_Price",
+                created_time as "Created_Time"
+            FROM sales
         `;
         let filter_applied = 0;
-
-        // APPLY SEARCH - title
-        if (title != null){
-
-            if (filter_applied == 0){
-                query += " where "
-            } else {
-                query += " and "
-            }
-
-            let filter_value = "'" + '%'+title.toString().toLowerCase()+'%' + "'" ;
-            query += `  title like ${filter_value}  `;
-            filter_applied += 1;
-        }
 
 
         // APPLY SEARCH - author_id
@@ -196,11 +253,56 @@ function getBookSearch(
             query += ` author_id = ${filter_value} `;
             filter_applied += 1;
         }
+        
+
+        // APPLY SEARCH - book_title
+        if (book_title != null){
+
+            if (filter_applied == 0){
+                query += " where "
+            } else {
+                query += " and "
+            }
+
+            let filter_value = "'" + '%'+book_title.toString().toLowerCase()+'%' + "'" ;
+            query += `  book_title like ${filter_value}  `;
+            filter_applied += 1;
+        }
+
+
+        // APPLY SEARCH - sales_created_start
+        if (sales_created_start != null){
+
+            if (filter_applied == 0){
+                query += " where "
+            } else {
+                query += " and "
+            }
+
+            let filter_value = sales_created_start;
+            query += `  created_time >= ${filter_value}  `;
+            filter_applied += 1;
+        }
+
+
+        // APPLY SEARCH - sales_created_end
+        if (sales_created_end != null){
+
+            if (filter_applied == 0){
+                query += " where "
+            } else {
+                query += " and "
+            }
+
+            let filter_value = sales_created_end;
+            query += `  created_time <= ${filter_value}  `;
+            filter_applied += 1;
+        }
 
 
         // ORDER
         query += `
-            ORDER BY book_id asc
+            ORDER BY created_time desc
         `
 
         // LIMIT 
@@ -225,7 +327,7 @@ function getBookSearch(
         
         for(const data of search_stmt.iterate()){
 
-            console.log('book data fetched :: ' + data["Book_ID"].toString());
+            console.log('sales data fetched :: ' + data["Sales_ID"].toString());
 
             result.push(
                 data
@@ -255,9 +357,11 @@ function getBookSearch(
 
 // GET book search Count All
 // ===============================================================================
-function getBookSearchCountAll(
-    title,
-    author_id
+function getSalesSearchCountAll(
+    author_id,
+    book_title,
+    sales_created_start,
+    sales_created_end,
 ){
 
     let success;
@@ -270,24 +374,9 @@ function getBookSearchCountAll(
             select  
                 --// COUNT ONLY
                 COUNT(*) as "Total"
-            FROM book
+            FROM sales
         `;
         let filter_applied = 0;
-
-        // APPLY SEARCH - title
-        if (title != null){
-
-            if (filter_applied == 0){
-                query += " where "
-            } else {
-                query += " and "
-            }
-
-            let filter_value = "'" + '%'+title.toString().toLowerCase()+'%' + "'" ;
-            query += `  title like ${filter_value}  `;
-            filter_applied += 1;
-        }
-
 
         // APPLY SEARCH - author_id
         if (author_id != null){
@@ -302,12 +391,51 @@ function getBookSearchCountAll(
             query += ` author_id = ${filter_value} `;
             filter_applied += 1;
         }
+        
+
+        // APPLY SEARCH - book_title
+        if (book_title != null){
+
+            if (filter_applied == 0){
+                query += " where "
+            } else {
+                query += " and "
+            }
+
+            let filter_value = "'" + '%'+book_title.toString().toLowerCase()+'%' + "'" ;
+            query += `  book_title like ${filter_value}  `;
+            filter_applied += 1;
+        }
 
 
-        // ORDER
-        query += `
-            ORDER BY book_id asc
-        `;
+        // APPLY SEARCH - sales_created_start
+        if (sales_created_start != null){
+
+            if (filter_applied == 0){
+                query += " where "
+            } else {
+                query += " and "
+            }
+
+            let filter_value = sales_created_start;
+            query += `  created_time >= ${filter_value}  `;
+            filter_applied += 1;
+        }
+
+
+        // APPLY SEARCH - sales_created_end
+        if (sales_created_end != null){
+
+            if (filter_applied == 0){
+                query += " where "
+            } else {
+                query += " and "
+            }
+
+            let filter_value = sales_created_end;
+            query += `  created_time <= ${filter_value}  `;
+            filter_applied += 1;
+        }
 
 
 
@@ -343,8 +471,8 @@ function getBookSearchCountAll(
 
 // GET book by ID
 // ===============================================================================
-function getBookByID(
-    book_id,
+function getSalesByID(
+    sales_id,
 ){
 
     let success;
@@ -353,23 +481,25 @@ function getBookByID(
     try {
 
         // BOOK
-        let book_stmt =  db.prepare(
+        let sales_stmt =  db.prepare(
             `
                 SELECT 
-                    book_id as "Book_ID",
+                    sales_id as "Sales_ID",
+                    name as "Recipient_Name",
+                    email as "Recipient_Email",
+                    book_title as "Book_Title",
                     author_id as "Author_ID",
-                    title as "Title",
-                    summary as "Summary",
-                    price as "Price",
-                    stock as "Stock",
-                    cover_url as "Cover_URL"
-                FROM book
-                WHERE book_id = ${book_id}
-                ORDER BY book_id asc
+                    quantity as "Quantity",
+                    price_per_unit as "Price_Per_Unit",
+                    price_total as "Total_Price",
+                    created_time as "Created_Time"
+                FROM sales
+                WHERE sales_id = ${sales_id}
+                ORDER BY sales_id asc
             `
         );
-        let book_data = book_stmt.get();
-        if(!book_data){
+        let sales_data = sales_stmt.get();
+        if(!sales_data){
             success = true;
             result = null;
             return [
@@ -378,246 +508,11 @@ function getBookByID(
             ]; 
         }
 
-        console.log('book data fetched :: ' + book_data["Book_ID"].toString());
+        console.log('sales data fetched :: ' + sales_data["Sales_ID"].toString());
         
-        result = book_data;
-
-        
-        success = true;
-
-    } catch(err) {
-
-        console.log(err.message);
-        success = false;
-        result = err.message;
-
-
-    }
-
-    return [
-        success,
-        result
-    ];
-
-}
-
-
-// UPDATE book by ID
-// ===============================================================================
-function updateBook(
-    book_id,
-    title,
-    summary,
-    price,
-    stock
-){
-
-    let success;
-    let result = null;
-
-
-    // PARAM TREATMENT
-    title = title.toString().replaceAll("'", "''");
-    summary = summary.toString().replaceAll("'", "''");
-
-    try {
-
-        // BEGIN
-        begin.run();
-
-        let update_book_stmt = db.prepare(
-            `
-                UPDATE book
-                SET title = '${title}', summary = '${summary}', price = ${price}, stock = ${stock}
-                WHERE book_id = ${book_id}
-            `
-        );
-        let update_book_info = update_book_stmt.run();
-        console.log('book data updated :: ' + book_id.toString());
-
-
-        // COMMIT
-        commit.run();
-
-        success = true;
-        result = null
-
-    } catch(err) {
-
-        if (db.inTransaction) rollback.run();
-        console.log(err.message);
-        success = false;
-        result = err.message;
-
-
-    }
-
-    return [
-        success,
-        result
-    ];
-
-}
-
-
-// UPDATE book by ID
-// ===============================================================================
-function updateBookCover(
-    book_id,
-    cover_url
-){
-
-    let success;
-    let result = null;
-
-    try {
-
-        // BEGIN
-        begin.run();
-
-        let update_book_stmt = db.prepare(
-            `
-                UPDATE book
-                SET cover_url = '${cover_url}'
-                WHERE book_id = ${book_id}
-            `
-        );
-        let update_book_info = update_book_stmt.run();
-        console.log('book data updated :: ' + book_id.toString());
-
-
-        // COMMIT
-        commit.run();
-
-        success = true;
-        result = null
-
-    } catch(err) {
-
-        if (db.inTransaction) rollback.run();
-        console.log(err.message);
-        success = false;
-        result = err.message;
-
-
-    }
-
-    return [
-        success,
-        result
-    ];
-
-}
-
-
-// DELETE book by ID
-// ===============================================================================
-function deleteBook(
-    book_id,
-){
-
-    let success;
-    let result = null;
-
-    try {
-
-
-        // BEGIN
-        begin.run();
-
-        // let delete_book_stmt = db.prepare(
-        //     `
-        //         DELETE FROM book
-        //         WHERE book_id = ${book_id}
-        //     `
-        // );
-        // let delete_book_info = delete_book_stmt.run();
-        // console.log('book data deleted for book :: ' + book_id.toString());
-
-
-        // let delete_sales_stmt = db.prepare(
-        //     `
-        //         DELETE FROM sales
-        //         WHERE book_id in (
-        //             select book_id
-        //             from book
-        //             where book_id = ${book_id}
-        //         )
-        //     `
-        // );
-        // let delete_sales_info = delete_sales_stmt.run();
-        // console.log('sales data deleted for book :: ' + book_id.toString());
+        result = sales_data;
 
         
-        let delete_book_stmt = db.prepare(
-            `
-                DELETE FROM book
-                WHERE book_id = ${book_id}
-            `
-        );
-        let delete_book_info = delete_book_stmt.run();
-        console.log('book data deleted :: ' + book_id.toString());
-
-
-        // let delete_book_stmt = db.prepare(
-        //     `
-        //         UPDATE book
-        //         SET is_disabled = true
-        //         WHERE book_id = ${book_id}
-        //     `
-        // );
-        // let delete_book_info = delete_book_stmt.run();
-        // console.log('book data deleted :: ' + book_id.toString());
-
-        // COMMIT
-        commit.run();
-        
-        success = true;
-        result = null
-
-    } catch(err) {
-
-        if (db.inTransaction) rollback.run();
-        console.log(err.message);
-        success = false;
-        result = err.message;
-
-
-    }
-
-    return [
-        success,
-        result
-    ];
-
-}
-
-
-// GET book by ID
-// ===============================================================================
-function checkBookIDExists(
-    book_id,
-){
-
-    let success;
-    let result = null;
-
-    try {
-
-        // BOOK
-        let book_stmt =  db.prepare(
-            `
-                select exists(
-                    select 1 
-                    from book
-                    where book_id = ${book_id}
-                ) as "Exists"
-            `
-        );
-        let book_data = book_stmt.get();
-        console.log('book data checked :: ' + book_id.toString());
-
-        result = (book_data["Exists"] == true);
         success = true;
 
     } catch(err) {
@@ -639,10 +534,6 @@ function checkBookIDExists(
 
 // EXPORTS
 // ===============================================================================
-exports.addBook = addBook;
-exports.getBookSearchMain = getBookSearchMain;
-exports.getBookByID = getBookByID;
-exports.updateBook = updateBook;
-exports.deleteBook = deleteBook;
-exports.checkBookIDExists = checkBookIDExists;
-exports.updateBookCover = updateBookCover;
+exports.addSales = addSales;
+exports.getSalesSearchMain = getSalesSearchMain;
+exports.getSalesByID = getSalesByID;

@@ -15,6 +15,8 @@ function getUIDFromHeader(req){
      * @TODO Edge and Internet Explorer do some weird things with the headers
      * So I believe that this should handle more 'edge' cases ;)
      */
+
+    console.log(req.headers);
     let header_target = "authorization";
     header_target = header_target.toLowerCase();
     if (req.headers[header_target]){

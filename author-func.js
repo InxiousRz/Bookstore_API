@@ -31,12 +31,15 @@ function addAuthor(
     try {
 
         let action_time = moment_tz();
+        let unix_now = action_time.unix();
         console.log(action_time);
+        
 
 
         // PARAM TREATMENT
         name = name.toString().replaceAll("'", "''");
         pen_name = pen_name.toString().replaceAll("'", "''");
+        email = email.toString().replaceAll("'", "''");
 
         
         let author_id;
@@ -48,12 +51,13 @@ function addAuthor(
         // QUERY
         let insert_author_stmt = db.prepare(
             `
-                INSERT INTO author(name, pen_name, email, password)
+                INSERT INTO author(name, pen_name, email, password, created_time)
                 VALUES (
                     '${name}',
                     '${pen_name}',
                     '${email}',
-                    '${hash_password}'
+                    '${hash_password}',
+                    ${unix_now}
                 )
             `
         );

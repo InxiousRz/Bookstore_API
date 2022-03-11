@@ -50,7 +50,7 @@ function generateAccessToken(author_data){
             author_data,
             key_private,
             {
-                expiresIn: '15m',
+                expiresIn: '15s',
                 algorithm: "RS256"
             }
         )

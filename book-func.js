@@ -31,6 +31,7 @@ function addBook(
     try {
 
         let action_time = moment_tz();
+        let unix_now = action_time.unix();
         console.log(action_time);
 
 
@@ -45,13 +46,14 @@ function addBook(
         // QUERY
         let insert_book_stmt = db.prepare(
             `
-                INSERT INTO book(author_id, title, summary, price, stock)
+                INSERT INTO book(author_id, title, summary, price, stock, created_time)
                 VALUES (
                     ${author_id},
                     '${title}',
                     '${summary}',
                     ${price},
-                    ${stock}
+                    ${stock},
+                    ${unix_now}
                 )
             `
         );
@@ -90,6 +92,7 @@ function addBook(
 function getBookSearchMain(
     title,
     author_id,
+    stocked,
     current_page,
     limit
 ){
@@ -99,6 +102,7 @@ function getBookSearchMain(
     let [get_search_success, get_search_result] = getBookSearch(
         title,
         author_id,
+        stocked,
         current_page,
         limit
     )
@@ -114,7 +118,8 @@ function getBookSearchMain(
     // ------------------------------------------------------
     let [get_search_count_success, get_search_count_result] = getBookSearchCountAll(
         title,
-        author_id
+        author_id,
+        stocked
     )
 
     // IF FAILS
@@ -145,6 +150,7 @@ function getBookSearchMain(
 function getBookSearch(
     title,
     author_id,
+    stocked,
     current_page,
     limit
 ){
@@ -156,15 +162,19 @@ function getBookSearch(
 
         // BOOK
         let query = `
+
             SELECT 
-                book_id as "Book_ID",
-                author_id as "Author_ID",
-                title as "Title",
-                summary as "Summary",
-                price as "Price",
-                stock as "Stock",
-                cover_url as "Cover_URL"
-            FROM book
+                b.book_id as "Book_ID",
+                b.author_id as "Author_ID",
+                b.title as "Title",
+                b.summary as "Summary",
+                b.price as "Price",
+                b.stock as "Stock",
+                b.cover_url as "Cover_URL",
+                a.Pen_Name as "Author_Pen_Name"
+            FROM book b
+            JOIN author a ON b.author_id = a.author_id and a.is_disabled = false
+
         `;
         let filter_applied = 0;
 
@@ -178,7 +188,7 @@ function getBookSearch(
             }
 
             let filter_value = "'" + '%'+title.toString().toLowerCase()+'%' + "'" ;
-            query += `  title like ${filter_value}  `;
+            query += `  b.title like ${filter_value}  `;
             filter_applied += 1;
         }
 
@@ -193,14 +203,28 @@ function getBookSearch(
             }
 
             let filter_value = author_id;
-            query += ` author_id = ${filter_value} `;
+            query += ` b.author_id = ${filter_value} `;
+            filter_applied += 1;
+        }
+
+        // APPLY SEARCH - stocked
+        if (stocked != null){
+
+            if (filter_applied == 0){
+                query += " where "
+            } else {
+                query += " and "
+            }
+
+            let filter_value = stocked;
+            query += ` ( (b.stock > 0) = ${filter_value} ) `;
             filter_applied += 1;
         }
 
 
         // ORDER
         query += `
-            ORDER BY book_id asc
+            ORDER BY b.created_time desc, b.book_id asc
         `
 
         // LIMIT 
@@ -257,7 +281,8 @@ function getBookSearch(
 // ===============================================================================
 function getBookSearchCountAll(
     title,
-    author_id
+    author_id,
+    stocked
 ){
 
     let success;
@@ -270,7 +295,8 @@ function getBookSearchCountAll(
             select  
                 --// COUNT ONLY
                 COUNT(*) as "Total"
-            FROM book
+            FROM book b
+            JOIN author a ON b.author_id = a.author_id and a.is_disabled = false
         `;
         let filter_applied = 0;
 
@@ -284,7 +310,7 @@ function getBookSearchCountAll(
             }
 
             let filter_value = "'" + '%'+title.toString().toLowerCase()+'%' + "'" ;
-            query += `  title like ${filter_value}  `;
+            query += `  b.title like ${filter_value}  `;
             filter_applied += 1;
         }
 
@@ -299,15 +325,23 @@ function getBookSearchCountAll(
             }
 
             let filter_value = author_id;
-            query += ` author_id = ${filter_value} `;
+            query += ` b.author_id = ${filter_value}`;
             filter_applied += 1;
         }
 
+        // APPLY SEARCH - stocked
+        if (stocked != null){
 
-        // ORDER
-        query += `
-            ORDER BY book_id asc
-        `;
+            if (filter_applied == 0){
+                query += " where "
+            } else {
+                query += " and "
+            }
+
+            let filter_value = stocked;
+            query += ` ( (b.stock > 0) = ${filter_value} ) `;
+            filter_applied += 1;
+        }
 
 
 
@@ -356,14 +390,16 @@ function getBookByID(
         let book_stmt =  db.prepare(
             `
                 SELECT 
-                    book_id as "Book_ID",
-                    author_id as "Author_ID",
-                    title as "Title",
-                    summary as "Summary",
-                    price as "Price",
-                    stock as "Stock",
-                    cover_url as "Cover_URL"
-                FROM book
+                    b.book_id as "Book_ID",
+                    b.author_id as "Author_ID",
+                    b.title as "Title",
+                    b.summary as "Summary",
+                    b.price as "Price",
+                    b.stock as "Stock",
+                    b.cover_url as "Cover_URL",
+                    a.Pen_Name as "Author_Pen_Name"
+                FROM book b
+                JOIN author a ON b.author_id = a.author_id
                 WHERE book_id = ${book_id}
                 ORDER BY book_id asc
             `

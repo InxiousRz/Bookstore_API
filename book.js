@@ -89,6 +89,7 @@ router.get('/get_my_book', authorMiddleware, async (req, res)=>{
     //=============================================================
     let title = joi_valid.value["Title"];
     let author_id = res.locals.curr_author_id;
+    let stocked = null;
     let current_page = joi_valid.value["Page"];
     let limit = joi_valid.value["Limit"];
 
@@ -97,6 +98,7 @@ router.get('/get_my_book', authorMiddleware, async (req, res)=>{
     let [book_success, book_result] = getBookSearchMain(
         title,
         author_id,
+        stocked,
         current_page,
         limit
     );
@@ -184,6 +186,7 @@ router.get('/get', async (req, res)=>{
     //=============================================================
     let title = joi_valid.value["Title"];
     let author_id = joi_valid.value["Author_ID"];
+    let stocked = true;
     let current_page = joi_valid.value["Page"];
     let limit = joi_valid.value["Limit"];
 
@@ -192,6 +195,7 @@ router.get('/get', async (req, res)=>{
     let [book_success, book_result] = getBookSearchMain(
         title,
         author_id,
+        stocked,
         current_page,
         limit
     );
@@ -414,7 +418,7 @@ router.put('/update_cover/:id', authorMiddleware, async (req, res)=>{
     //=============================================================
     const data_toview_on_error = {
         "PARAMS": req.params,
-        "BODY": req.body
+        // "BODY": req.body
     };
     const req_body = req.body;
 

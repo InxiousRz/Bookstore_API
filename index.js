@@ -29,7 +29,17 @@ app.use(helmet()); //A lvl 2 helmet
 app.use(compression()); //Compress all routes
 
 // STATIC IMAGE
-app.use("/images", express.static(__dirname + '/images'));
+app.use("/images", express.static(
+    __dirname + '/images',
+    {
+        setHeaders: function setHeaders(res, path, stat) {
+          res.header('Access-Control-Allow-Origin', '*');
+          res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+          res.header('Access-Control-Allow-Methods', 'GET');
+          res.header('Access-Control-Allow-Headers', 'Content-Type');
+        }
+    }
+));
 
 // APP HOMEs
 // ===============================================================================
@@ -58,11 +68,12 @@ app.get(`/${project_alias}/`, (req, res)=>{
 //------------------------------------------------------------------------
 const r_author = require('./author');
 const r_book = require('./book');
-// const r_wh = require('./webhook_recv');
+const r_sales = require('./sales');
 
 // ROUTE IMPLEMENTATION
 app.use(`/author`, r_author);
 app.use(`/book`, r_book);
+app.use(`/sales`, r_sales);
 
 // ROUTE IMPORT [VERSION 1]
 //------------------------------------------------------------------------

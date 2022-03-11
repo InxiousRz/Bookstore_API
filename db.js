@@ -14,7 +14,6 @@ let book_query = `
         price integer,
         cover_url text, 
         created_time integer, 
-        updated_time integer,
         FOREIGN KEY (author_id) 
             REFERENCES author (author_id)
     )
@@ -29,8 +28,7 @@ let author_query = `
         password text,
         active_refresh_token text,
         is_disabled boolean DEFAULT false,
-        created_time integer, 
-        updated_time integer
+        created_time integer
         
 
     )
@@ -41,14 +39,12 @@ let sales_query = `
         sales_id integer PRIMARY KEY AUTOINCREMENT,
         name text,
         email text,
-        book_id integer,  
-        unit integer,
+        book_title integer,  
+        author_id integer,
+        quantity integer,
         price_per_unit integer,
         price_total integer,
-        created_time integer, 
-        updated_time integer,
-        FOREIGN KEY (book_id) 
-            REFERENCES book (book_id)
+        created_time integer
 
     )
 `;

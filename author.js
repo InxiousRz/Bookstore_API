@@ -23,6 +23,8 @@ const checkAuthorEmailExists = require('./author-func').checkAuthorEmailExists;
 const loginAuthor = require('./auth').loginAuthor;
 const logoutAuthor = require('./auth').logoutAuthor;
 const refreshTokenAuthor = require('./auth').refreshTokenAuthor;
+const changePasswordAuthor = require('./auth').changePasswordAuthor;
+const resetPasswordAuthor = require('./auth').resetPasswordAuthor;
 const logApiBasic = require('./utilities').logApiBasic;
 
 // CONFIGS
@@ -275,6 +277,212 @@ router.put('/update', authorMiddleware, async (req, res)=>{
             "error_key": "error_internal_server",
             "error_message": author_result,
             "error_data": "ON updateAuthor"
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+
+    // ASSEMBLY RESPONSE
+    //=============================================================
+    res.status(200).json({
+        "message": "Success"
+    });
+    return; //END
+    
+});
+
+//------------------------------------------------------------------------
+// PUT UPDATE author
+//------------------------------------------------------------------------
+router.put('/change_password', authorMiddleware, async (req, res)=>{
+
+    // BASIC REQUEST INFO
+    //=============================================================
+    const request_namepath = req.path;
+    const time_requested = moment_tz().tz('Asia/Jakarta');
+
+    // PARAM
+    //=============================================================
+    const data_toview_on_error = {
+        "PARAMS": req.params,
+        "BODY": req.body
+    };
+    const req_body = req.body;
+
+    // JOI VALIDATION
+    //=============================================================
+    let joi_body_schema = joi.object({
+        "Old_Password": joi.string().required(),
+        "New_Password": joi.string().required(),
+    }).required();
+
+    let joi_id_schema = joi.number().required();
+
+    let joi_body_valid = joi_body_schema.validate(req_body);
+    if (joi_body_valid.error){
+        const message = {
+            "message": "Failed",
+            "error_key": "error_param",
+            "error_message": joi_body_valid.error.stack,
+            "error_data": joi_body_valid.error.details
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+    let joi_id_valid = joi_id_schema.validate(res.locals.curr_author_id);
+    if (joi_id_valid.error){
+        const message = {
+            "message": "Failed",
+            "error_key": "error_param",
+            "error_message": joi_id_valid.error.stack,
+            "error_data": joi_id_valid.error.details
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+
+    // PARAMETER
+    //=============================================================
+    let author_id = res.locals.curr_author_id;
+    let old_password = joi_body_valid.value["Old_Password"];
+    let new_password = joi_body_valid.value["New_Password"];
+
+    // CHECK ID author
+    //=============================================================
+    let [check_author_success, check_author_result] = checkAuthorIDExists(
+        author_id
+    );
+
+    // QUERY FAILS
+    if (!check_author_success){
+        console.log(check_author_result);
+        const message = {
+            "message": "Failed",
+            "error_key": "error_internal_server",
+            "error_message": check_author_result,
+            "error_data": "ON checkAuthorIDExists"
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+    // ID DOESNT EXISTS
+    if (!check_author_result){
+        console.log(check_author_result);
+        const message = {
+            "message": "Failed",
+            "error_key": "error_id_not_found",
+            "error_message": "Cant found data with id :: " + author_id.toString(),
+            "error_data": {
+                "ON": "checkAuthorIDExists",
+                "ID": author_id
+            }
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+    // UPDATE author
+    //=============================================================
+    let [change_pass_success, change_pass_result] = changePasswordAuthor(
+        author_id,
+        old_password,
+        new_password
+    );
+
+    // QUERY FAILS
+    if (!change_pass_success){
+        console.log(change_pass_result);
+        const message = {
+            "message": "Failed",
+            "error_key": "error_internal_server",
+            "error_message": change_pass_result,
+            "error_data": "ON changePasswordAuthor"
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+    // EMAIL NOT FOUND
+    if (change_pass_result == "NOT_FOUND"){
+        console.log(change_pass_result);
+        const message = {
+            "message": "Failed",
+            "error_key": "error_author_id_not_found",
+            "error_message": "Author ID not listed on db :: " + author_id.toString(),
+            "error_data": "ON changePasswordAuthor"
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+    // PASSWORD INVALID
+    if (change_pass_result == "INVALID_PASSWORD"){
+        console.log(change_pass_result);
+        const message = {
+            "message": "Failed",
+            "error_key": "error_invalid_password",
+            "error_message": "Invalid password for user :: " + author_id.toString(),
+            "error_data": "ON changePasswordAuthor"
         };
         //LOGGING
         logApiBasic(
@@ -912,6 +1120,116 @@ router.post('/login', async (req, res)=>{
 
 
 //------------------------------------------------------------------------
+// POST ADD author login
+//------------------------------------------------------------------------
+router.post('/forgot_password', async (req, res)=>{
+
+    // BASIC REQUEST INFO
+    //=============================================================
+    const request_namepath = req.path;
+    const time_requested = moment_tz().tz('Asia/Jakarta');
+
+    // PARAM
+    //=============================================================
+    const data_toview_on_error = {
+        "PARAMS": req.params,
+        "BODY": req.body
+    };
+    const req_body = req.body;
+
+    // JOI VALIDATION
+    //=============================================================
+    let joi_body_schema = joi.object({
+        "Email": joi.string().email().required()
+    }).required();
+
+    let joi_body_valid = joi_body_schema.validate(req_body);
+    if (joi_body_valid.error){
+        const message = {
+            "message": "Failed",
+            "error_key": "error_param",
+            "error_message": joi_body_valid.error.stack,
+            "error_data": joi_body_valid.error.details
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+
+    // PARAMETER
+    //=============================================================
+    let email = joi_body_valid.value["Email"];
+
+    // NEW PASSWORD
+    //=============================================================
+    let [change_pass_success, change_pass_result] = resetPasswordAuthor(
+        email
+    );
+
+    // QUERY FAILS
+    if (!change_pass_success){
+        console.log(change_pass_result);
+        const message = {
+            "message": "Failed",
+            "error_key": "error_internal_server",
+            "error_message": change_pass_result,
+            "error_data": "ON resetPasswordAuthor"
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+    // EMAIL NOT FOUND
+    if (change_pass_result == "NOT_FOUND"){
+        console.log(change_pass_result);
+        const message = {
+            "message": "Failed",
+            "error_key": "error_email_not_found",
+            "error_message": "Email is not listed on db :: " + email.toString(),
+            "error_data": "ON resetPasswordAuthor"
+        };
+        //LOGGING
+        logApiBasic(
+            `Request ${head_route_name}/${request_namepath} Failed`,
+            `REQUEST GOT AT : ${time_requested} \n` +
+            "REQUEST BODY/PARAM : \n" +
+            JSON.stringify(data_toview_on_error, null, 2),
+            JSON.stringify(message, null, 2)
+        );
+        res.status(200).json(message);
+        return; //END
+    }
+
+    // ASSEMBLY RESPONSE
+    //=============================================================
+    res.status(200).json({
+        "message": "Success",
+        "data": {
+            "New_Password": change_pass_result
+        }
+    });
+    return; //END
+    
+});
+
+
+//------------------------------------------------------------------------
 // POST ADD author logout
 //------------------------------------------------------------------------
 router.post('/logout', authorMiddleware, async (req, res)=>{
@@ -1076,7 +1394,7 @@ router.post('/refresh_token', async (req, res)=>{
         const message = {
             "message": "Failed",
             "error_key": "error_refresh_token_invalid",
-            "error_message": "Refresh token is invalid, please re-login" + email.toString(),
+            "error_message": "Refresh token is invalid, please re-login",
             "error_data": "ON refreshTokenAuthor"
         };
         //LOGGING
