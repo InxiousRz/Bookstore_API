@@ -71,9 +71,9 @@ const r_book = require('./book');
 const r_sales = require('./sales');
 
 // ROUTE IMPLEMENTATION
-app.use(`/author`, r_author);
-app.use(`/book`, r_book);
-app.use(`/sales`, r_sales);
+app.use(`/bookstore_api/author`, r_author);
+app.use(`/bookstore_api/book`, r_book);
+app.use(`/bookstore_api/sales`, r_sales);
 
 // ROUTE IMPORT [VERSION 1]
 //------------------------------------------------------------------------

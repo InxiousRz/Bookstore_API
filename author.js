@@ -1384,7 +1384,7 @@ router.post('/refresh_token', async (req, res)=>{
             JSON.stringify(data_toview_on_error, null, 2),
             JSON.stringify(message, null, 2)
         );
-        res.status(200).json(message);
+        res.status(401).json(message);
         return; //END
     }
 
@@ -1405,7 +1405,7 @@ router.post('/refresh_token', async (req, res)=>{
             JSON.stringify(data_toview_on_error, null, 2),
             JSON.stringify(message, null, 2)
         );
-        res.status(200).json(message);
+        res.status(401).json(message);
         return; //END
     }
 

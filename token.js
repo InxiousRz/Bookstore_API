@@ -2,9 +2,8 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 
 
-let key_private = fs.readFileSync('./private-key.key', 'utf8');
-let key_pub = fs.readFileSync('./public-key.key.pub', 'utf8');
-const refresh_key = "ilovemymum";
+const refresh_key = "ilovemydad";
+const access_key = "ilovemymum";
 
 
 
@@ -48,10 +47,10 @@ function generateAccessToken(author_data){
 
         access_token = jwt.sign(
             author_data,
-            key_private,
+            access_key,
             {
                 expiresIn: '15s',
-                algorithm: "RS256"
+                algorithm: "HS256"
             }
         )
 
@@ -77,9 +76,9 @@ function verifyAccessToken(access_token){
 
         valid_data = jwt.verify(
             access_token,
-            key_pub,
+            access_key,
             {
-                algorithm: "RS256"
+                algorithm: "HS256"
             }
         );
 

@@ -255,7 +255,7 @@ function refreshTokenAuthor(
                     email as "Email",
                     active_refresh_token as "Active_Refresh_Token"
                 FROM author
-                WHERE author_id = ${author_id}
+                WHERE author_id = ${author_id} and is_disabled = false
             `
         );
         let author_data = author_stmt.get();
@@ -271,13 +271,14 @@ function refreshTokenAuthor(
             ]; 
         }
 
+
         console.log('author data fetched :: ' + author_id.toString());
         
 
         // COMPARE REFRESH TOKEN
         // =============================================================================
         let active_refresh_token = author_data["Active_Refresh_Token"];
-        if(!refresh_token == active_refresh_token){
+        if(refresh_token != active_refresh_token){
             success = true;
             result = "INVALID_TOKEN";
             return [
@@ -393,7 +394,7 @@ function changePasswordAuthor(
                     email as "Email",
                     password as "Password"
                 FROM author
-                WHERE author_id = ${author_id}
+                WHERE author_id = ${author_id} and is_disabled = false
                 ORDER BY author_id asc
             `
         );
@@ -499,7 +500,7 @@ function resetPasswordAuthor(
                     email as "Email",
                     password as "Password"
                 FROM author
-                WHERE email = '${email}'
+                WHERE email = '${email}' and is_disabled = false
                 ORDER BY author_id asc
             `
         );
