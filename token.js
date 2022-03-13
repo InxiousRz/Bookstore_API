@@ -49,7 +49,7 @@ function generateAccessToken(author_data){
             author_data,
             access_key,
             {
-                expiresIn: '15s',
+                expiresIn: '15m',
                 algorithm: "HS256"
             }
         )

@@ -6,6 +6,7 @@ const moment_tz = require('moment-timezone');
 
 // MIDDLEWARES
 // ===============================================================================
+const authorMiddleware = require('./middleware').authorMiddleware;
 
 // MODELS
 // ===============================================================================
@@ -34,7 +35,7 @@ const head_route_name = '/sales';
 //------------------------------------------------------------------------
 // GET sales
 //------------------------------------------------------------------------
-router.get('/get_my_sales', async (req, res)=>{
+router.get('/get_my_sales', authorMiddleware, async (req, res)=>{
     
     // BASIC REQUEST INFO
     //=============================================================
@@ -231,7 +232,7 @@ router.post('/add', async (req, res)=>{
 //------------------------------------------------------------------------
 // GET sales By ID
 //------------------------------------------------------------------------
-router.get('/get/:id', async (req, res)=>{
+router.get('/get/:id', authorMiddleware, async (req, res)=>{
 
     // BASIC REQUEST INFO
     //=============================================================

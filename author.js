@@ -242,8 +242,8 @@ router.put('/update', authorMiddleware, async (req, res)=>{
         console.log(check_author_result);
         const message = {
             "message": "Failed",
-            "error_key": "error_id_not_found",
-            "error_message": "Cant found data with id :: " + author_id.toString(),
+            "error_key": "error_author_id_not_found",
+            "error_message": "Author ID not listed on db :: " + author_id.toString(),
             "error_data": {
                 "ON": "checkAuthorIDExists",
                 "ID": author_id
@@ -406,8 +406,8 @@ router.put('/change_password', authorMiddleware, async (req, res)=>{
         console.log(check_author_result);
         const message = {
             "message": "Failed",
-            "error_key": "error_id_not_found",
-            "error_message": "Cant found data with id :: " + author_id.toString(),
+            "error_key": "error_author_id_not_found",
+            "error_message": "Author ID not listed on db :: " + author_id.toString(),
             "error_data": {
                 "ON": "checkAuthorIDExists",
                 "ID": author_id
@@ -735,8 +735,8 @@ router.delete('/delete', authorMiddleware, async (req, res)=>{
         console.log(check_author_result);
         const message = {
             "message": "Failed",
-            "error_key": "error_id_not_found",
-            "error_message": "Cant found data with id :: " + author_id.toString(),
+            "error_key": "error_author_id_not_found",
+            "error_message": "Author ID not listed on db :: " + author_id.toString(),
             "error_data": {
                 "ON": "checkAuthorIDExists",
                 "ID": author_id
@@ -848,8 +848,8 @@ router.get('/get_my_profile', authorMiddleware, async (req, res)=>{
         console.log(author_result);
         const message = {
             "message": "Failed",
-            "error_key": "error_id_not_found",
-            "error_message": "Cant found data with id :: " + author_id.toString(),
+            "error_key": "error_author_id_not_found",
+            "error_message": "Author ID not listed on db :: " + author_id.toString(),
             "error_data": {
                 "ON": "getAuthorByID",
                 "ID": author_id
@@ -955,8 +955,8 @@ router.get('/get/:id', async (req, res)=>{
         console.log(author_result);
         const message = {
             "message": "Failed",
-            "error_key": "error_id_not_found",
-            "error_message": "Cant found data with id :: " + author_id.toString(),
+            "error_key": "error_author_id_not_found",
+            "error_message": "Author ID not listed on db :: " + author_id.toString(),
             "error_data": {
                 "ON": "getAuthorByID",
                 "ID": author_id
